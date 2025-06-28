@@ -1,4 +1,6 @@
 #include "d3d12adapter.h"
+
+#if VG_D3D12_SUPPORTED
 #include <agilitysdk/d3dx12/d3dx12.h>
 
 #pragma comment(lib, "dxcore.lib")
@@ -98,3 +100,4 @@ D3D12Device* D3D12Adapter::CreateDevice(VgInitFlags initFlags)
 {
     return new(GetAllocator().Allocate<D3D12Device>()) D3D12Device(*this, initFlags);
 }
+#endif

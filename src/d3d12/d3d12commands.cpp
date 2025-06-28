@@ -4,6 +4,8 @@
 #include "d3d12descriptor_manager.h"
 #include <vector>
 #include <array>
+
+#if VG_D3D12_SUPPORTED
 #define USE_PIX
 #define PIX_ENABLE_GPU_EVENTS 1
 #include "WinPixEventRuntime/pix3.h"
@@ -850,3 +852,5 @@ void D3D12CommandList::EndMarker()
 	// PIXEndEvent
 	runtime.EndEvent(_cmd.Get());
 }
+
+#endif

@@ -17,4 +17,4 @@ target("model_viewer")
     add_configfiles("model_viewer/data/shaders/*.hlsli", {onlycopy = true})
 
     set_symbols("debug")
-    add_packages("glfw", "mimalloc", "glm", "assimp", "freeimage", "directxshadercompiler")
+    add_packages("glfw", "mimalloc", "glm", "assimp", "freeimage", "directxshadercompiler", "volk")

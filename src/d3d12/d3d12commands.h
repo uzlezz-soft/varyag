@@ -4,6 +4,8 @@
 #include <unordered_set>
 #include <mutex>
 
+#if VG_D3D12_SUPPORTED
+
 class D3D12CommandList;
 class D3D12CommandPool final : public VgCommandPool_t
 {
@@ -116,3 +118,5 @@ private:
 	void FinishIndirectDrawingWithExecuteIndirectTier10(ID3D12CommandSignature* commandSignature, uint32_t drawCount,
 		ID3D12Resource* countBuffer = nullptr, uint64_t countBufferOffset = 0);
 };
+
+#endif

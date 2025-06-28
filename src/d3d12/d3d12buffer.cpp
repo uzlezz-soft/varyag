@@ -1,5 +1,7 @@
 #include "d3d12buffer.h"
 #include "d3d12descriptor_manager.h"
+
+#if VG_D3D12_SUPPORTED
 #include <agilitysdk/d3dx12/d3dx12.h>
 
 D3D12Buffer::~D3D12Buffer()
@@ -112,3 +114,4 @@ D3D12Buffer::D3D12Buffer(D3D12Device& device, const VgBufferDesc& desc) : _devic
 	_device->GetMemoryStatistics().used_vram += _allocation->GetSize();
 	_device->GetMemoryStatistics().num_buffers++;
 }
+#endif

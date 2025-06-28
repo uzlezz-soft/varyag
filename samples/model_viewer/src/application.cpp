@@ -2,6 +2,8 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_LEFT_HANDED
 
+#include <volk.h>
+
 #include "application.h"
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
@@ -15,20 +17,39 @@
 
 Application::Application(int argc, char** argv)
 {
-	uint32_t numAdapters;
-	vgCheck(vg::EnumerateAdapters(vg::GraphicsApi::Auto, &numAdapters, nullptr));
-	std::vector<vg::Adapter> adapters(numAdapters);
-	vgCheck(vg::EnumerateAdapters(vg::GraphicsApi::Auto, &numAdapters, adapters.data()));
-
-	vgCheck(adapters.front().CreateDevice(&_device));
-
-	vg::GraphicsApi graphicsApi;
-	vgCheck(_device->GetGraphicsApi(&graphicsApi));
-
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	_window = glfwCreateWindow(1920, 1080, "Varyag Model Viewer", nullptr, nullptr);
 	glfwSetWindowUserPointer(_window, this);
+
+	auto api = vg::GraphicsApi::Vulkan;
+
+	if (api == vg::GraphicsApi::D3d12)
+	{
+		vgCheck(vg::CreateSurfaceD3D12(glfwGetWin32Window(_window), &_surface));
+	}
+	else
+	{
+		vg::VulkanObjects objects;
+		vgCheck(vg::GetVulkanObjects(&objects));
+		VkSurfaceKHR surface;
+		assert(glfwCreateWindowSurface(objects.instance, _window, objects.allocationCallbacks, &surface) == VK_SUCCESS);
+		vgCheck(vg::CreateSurfaceVulkan(surface, &_surface));
+	}
+
+	uint32_t numAdapters;
+	vgCheck(vg::EnumerateAdapters(api, _surface, &numAdapters, nullptr));
+	std::vector<vg::Adapter> adapters(numAdapters);
+	vgCheck(vg::EnumerateAdapters(api, _surface, &numAdapters, adapters.data()));
+
+	for (auto& adapter : adapters)
+	{
+		vg::AdapterProperties properties;
+		vgCheck(adapter.GetProperties(&properties));
+		std::cout << properties.name << "    rt: " << properties.hardwareRayTracing << "    ms: " << properties.meshShaders << "\n";
+	}
+
+	vgCheck(adapters.front().CreateDevice(&_device));
 
 	glfwSetScrollCallback(_window, [](GLFWwindow* window, double xoffset, double yoffset)
 		{ static_cast<Application*>(glfwGetWindowUserPointer(window))->OnScroll(yoffset); });
@@ -36,15 +57,6 @@ Application::Application(int argc, char** argv)
 		{ static_cast<Application*>(glfwGetWindowUserPointer(window))->OnMouseMove(xPos, yPos); });
 	glfwSetMouseButtonCallback(_window, [](GLFWwindow* window, int button, int action, int mods)
 		{ static_cast<Application*>(glfwGetWindowUserPointer(window))->OnMousePress(button, action, mods); });
-
-	if (graphicsApi == vg::GraphicsApi::D3d12)
-	{
-		vgCheck(vg::CreateSurfaceD3D12(glfwGetWin32Window(_window), &_surface));
-	}
-	else
-	{
-		assert(false);
-	}
 
 	vg::SwapChainDesc swapChainDesc = { 1920, 1080, vg::Format::B8g8r8a8Unorm, 2, _surface };
 	vgCheck(_device->CreateSwapChain(&swapChainDesc, &_swapChain));
@@ -82,7 +94,7 @@ Application::Application(int argc, char** argv)
 	_pbr = MeshShader::From(*this, "shaders/PBR.hlsl");
 
 	_model = Model::From(*this, "models/Bistro_v5_2/BistroExterior.fbx").value();
-	_model2 = Model::From(*this, "models/Bistro_v5_2/BistroInterior.fbx").value();
+	//_model2 = Model::From(*this, "models/Bistro_v5_2/BistroInterior.fbx").value();
 	
 	vg::MemoryStatistics stats;
 	_device->GetMemoryStatistics(&stats);

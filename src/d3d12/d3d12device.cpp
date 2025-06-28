@@ -2,6 +2,9 @@
 #include "../common.h"
 #include <array>
 #include <string_view>
+
+#if VG_D3D12_SUPPORTED
+
 #include <agilitysdk/d3dx12/d3dx12.h>
 
 #include "d3d12adapter.h"
@@ -247,12 +250,12 @@ D3D12Device::D3D12Device(D3D12Adapter& adapter, VgInitFlags initFlags)
     };
     ThrowOnError(_device->CreateCommandQueue(&queue, IID_PPV_ARGS(&_graphicsQueue)));
     queue.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-    ThrowOnError(_device->CreateCommandQueue(&queue, IID_PPV_ARGS(&_computVgQueue)));
+    ThrowOnError(_device->CreateCommandQueue(&queue, IID_PPV_ARGS(&_computeQueue)));
     queue.Type = D3D12_COMMAND_LIST_TYPE_COPY;
     ThrowOnError(_device->CreateCommandQueue(&queue, IID_PPV_ARGS(&_transferQueue)));
 
     _graphicsQueue->SetName(L"Graphics Queue");
-    _computVgQueue->SetName(L"Compute Queue");
+    _computeQueue->SetName(L"Compute Queue");
     _transferQueue->SetName(L"Transfer Queue");
 
     InitDescriptorManagement();
@@ -288,6 +291,7 @@ D3D12Device::D3D12Device(D3D12Adapter& adapter, VgInitFlags initFlags)
 
 D3D12Device::~D3D12Device()
 {
+    GetAllocator().Delete(_descriptorManager);
 }
 
 VgAdapter D3D12Device::Adapter() const
@@ -387,7 +391,7 @@ constexpr D3D12_FILTER FormD3D12Filter(VgFilter min_filter, VgFilter mag_filter,
 static D3D12_SAMPLER_DESC ConvertToD3D12SamplerDesc(const VgSamplerDesc& desc) {
     D3D12_SAMPLER_DESC d3d12Desc = {};
     d3d12Desc.Filter = FormD3D12Filter(desc.min_filter, desc.mag_filter, desc.mipmap_mode,
-        desc.comparison_func != VG_COMPARISON_FUNC_NONE, desc.max_anisotropy > 1, desc.reduction_mode);
+        desc.comparison_func != VG_COMPARISON_FUNC_NONE, desc.max_anisotropy > VG_ANISOTROPY_1, desc.reduction_mode);
 
     auto mapAddressMode = [](VgAddressMode mode) -> D3D12_TEXTURE_ADDRESS_MODE {
         switch (mode) {
@@ -404,7 +408,7 @@ static D3D12_SAMPLER_DESC ConvertToD3D12SamplerDesc(const VgSamplerDesc& desc) {
     d3d12Desc.AddressW = mapAddressMode(desc.address_w);
 
     d3d12Desc.MipLODBias = desc.mip_lod_bias;
-    d3d12Desc.MaxAnisotropy = desc.max_anisotropy;
+    d3d12Desc.MaxAnisotropy = 1u << desc.max_anisotropy;
 
     // Map comparison functions
     auto mapComparisonFunc = [](VgComparisonFunc func) -> D3D12_COMPARISON_FUNC {
@@ -563,7 +567,7 @@ void D3D12Device::SubmitCommandLists(uint32_t numSubmits, const VgSubmitInfo* su
         {
             std::unique_lock lock(_fenceMutex);
             submit(_graphicsQueue.Get(), info, directLists);
-            submit(_computVgQueue.Get(), info, computeLists);
+            submit(_computeQueue.Get(), info, computeLists);
             submit(_transferQueue.Get(), info, copyLists);
         }
     }
@@ -576,7 +580,7 @@ uint32_t D3D12Device::GetSamplerIndex(VgSampler sampler)
 
 void D3D12Device::InitDescriptorManagement()
 {
-    _descriptorManager = std::make_unique<D3D12DescriptorManager>(*this);
+    _descriptorManager = new (GetAllocator().Allocate<D3D12DescriptorManager>()) D3D12DescriptorManager(*this);
 
     const auto space = 1;
     std::array<CD3DX12_DESCRIPTOR_RANGE1, 3> resourceRanges;
@@ -749,3 +753,5 @@ ComPtr<ID3D12CommandSignature> D3D12IndirectCommandSignatureManager::GetDispatch
 {
     return GetOrCreateCommandSignature<D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH>(*_device, stride, _dispatchCommandSignatures, _dispatchMutex);
 }
+
+#endif

@@ -1,6 +1,9 @@
 #include "d3d12texture.h"
 #include "d3d12descriptor_manager.h"
 #include "d3d12swap_chain.h"
+
+#if VG_D3D12_SUPPORTED
+
 #include <agilitysdk/d3dx12/d3dx12.h>
 
 D3D12Texture::~D3D12Texture()
@@ -329,3 +332,5 @@ D3D12Texture::D3D12Texture(D3D12SwapChain& swapChain, ComPtr<ID3D12Resource> res
 	_device->GetMemoryStatistics().used_vram += _desc.width * _desc.height * FormatSizeBytes(_desc.format);
 	_device->GetMemoryStatistics().num_textures++;
 }
+
+#endif

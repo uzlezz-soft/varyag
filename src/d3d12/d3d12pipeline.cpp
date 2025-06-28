@@ -1,5 +1,8 @@
 #include "d3d12pipeline.h"
 #include "d3d12shader_module.h"
+
+#if VG_D3D12_SUPPORTED
+
 #include <agilitysdk/d3dx12/d3dx12_pipeline_state_stream.h>
 
 D3D12ComputePipeline::D3D12ComputePipeline(D3D12Device& device, VgShaderModule computeModule)
@@ -319,3 +322,5 @@ D3D12GraphicsPipeline::~D3D12GraphicsPipeline()
 {
 	_device->GetMemoryStatistics().num_pipelines--;
 }
+
+#endif

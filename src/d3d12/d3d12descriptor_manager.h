@@ -8,6 +8,8 @@
 #include <vector>
 #include <mutex>
 
+#if VG_D3D12_SUPPORTED
+
 class D3D12DescriptorHeap
 {
 public:
@@ -100,3 +102,5 @@ private:
 	vg::UnorderedMultimap<D3D12Texture*, uint32_t> _dsvs;
 	vg::UnorderedMultimap<D3D12Texture*, uint32_t> _textureViews;
 };
+
+#endif

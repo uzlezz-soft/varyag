@@ -3,6 +3,8 @@
 #include "d3d12device.h"
 #include <vector>
 
+#if VG_D3D12_SUPPORTED
+
 class D3D12ShaderModule final : public VgShaderModule_t
 {
 public:
@@ -15,3 +17,5 @@ private:
 	vg::Vector<char> _data;
 	D3D12_SHADER_BYTECODE _bytecode;
 };
+
+#endif

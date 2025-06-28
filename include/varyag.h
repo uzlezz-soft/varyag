@@ -136,7 +136,6 @@ extern "C" {
 	// Required Vulkan extensions:
 	// ---------------------------------------------------------
 	// VK_EXT_conservative_rasterization
-	// VK_KHR_multiview
 	// =========================================================
 
 	// =========================================================
@@ -145,6 +144,7 @@ extern "C" {
 	// independentBlend
 	// dualSrcBlend
 	// core 1.1: shaderDrawParameters
+	//           multiview
 	// =========================================================
 
 	typedef enum VgResult : uint64_t
@@ -721,6 +721,8 @@ extern "C" {
 
 	typedef struct VgConfig
 	{
+		const char* application_name;
+		const char* engine_name;
 		VgInitFlags flags;
 		VgMessageCallbackPFN message_callback;
 		VgAllocator allocator;
@@ -1105,10 +1107,16 @@ extern "C" {
 		uint32_t groups_z;
 	} VgDispatchIndirectCommand;
 
+	typedef struct VgVulkanObjects
+	{
+		struct VkInstance_T* instance;
+		const struct VkAllocationCallbacks* allocation_callbacks;
+	} VgVulkanObjects;
+
 	VG_API VgResult vgInit(const VgConfig* cfg);
 	VG_API void vgShutdown();
 	VG_API VgResult vgEnumerateApis(uint32_t* out_num_apis, VgGraphicsApi* out_apis);
-	VG_API VgResult vgEnumerateAdapters(VgGraphicsApi api, uint32_t* out_num_adapters, VgAdapter* out_adapters);
+	VG_API VgResult vgEnumerateAdapters(VgGraphicsApi api, VgSurface surface, uint32_t* out_num_adapters, VgAdapter* out_adapters);
 	
 	VG_API VgResult vgAdapterGetProperties(VgAdapter adapter, VgAdapterProperties* out_properties);
 	VG_API VgResult vgAdapterCreateDevice(VgAdapter adapter, VgDevice* out_device);
@@ -1212,8 +1220,9 @@ extern "C" {
 	VG_API VgResult vgTextureCreateView(VgTexture texture, const VgTextureViewDesc* desc, VgView* out_descriptor);
 	VG_API void vgTextureDestroyViews(VgTexture texture);
 
+	VG_API VgResult vgGetVulkanObjects(VgVulkanObjects* out_vulkan_objects);
 	VG_API VgResult vgCreateSurfaceD3D12(void* hwnd, VgSurface* out_surface);
-	VG_API VgResult vgCreateSurfaceVulkan(void* vk_surface, VgSurface* out_surface);
+	VG_API VgResult vgCreateSurfaceVulkan(struct VkSurfaceKHR_T* vk_surface, VgSurface* out_surface);
 	VG_API void vgDestroySurfaceVulkan(VgSurface surface);
 
 	VG_API VgResult vgSwapChainGetApiObject(VgSwapChain swap_chain, void** out_obj);

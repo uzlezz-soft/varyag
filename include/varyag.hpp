@@ -629,6 +629,7 @@ namespace vg
 	struct DrawIndirectCommand;
 	struct DrawIndexedIndirectCommand;
 	struct DispatchIndirectCommand;
+	struct VulkanObjects;
 
 	vg::Result Init                (const vg::Config* cfg);
 
@@ -638,13 +639,16 @@ namespace vg
 	                                vg::GraphicsApi* outApis);
 
 	vg::Result EnumerateAdapters   (vg::GraphicsApi api,
+	                                vg::Surface surface,
 	                                uint32_t* outNumAdapters,
 	                                vg::Adapter* outAdapters);
+
+	vg::Result GetVulkanObjects    (vg::VulkanObjects* outVulkanObjects);
 
 	vg::Result CreateSurfaceD3D12  (void* hwnd,
 	                                vg::Surface* outSurface);
 
-	vg::Result CreateSurfaceVulkan (void* vkSurface,
+	vg::Result CreateSurfaceVulkan (VkSurfaceKHR_T* vkSurface,
 	                                vg::Surface* outSurface);
 
 	void       DestroySurfaceVulkan(vg::Surface surface);
@@ -1224,6 +1228,8 @@ namespace vg
 	{
 		using NativeType = VgConfig;
 
+		const char* applicationName;
+		const char* engineName;
 		InitFlags flags;
 		MessageCallbackPFN messageCallback;
 		Allocator allocator;
@@ -1231,10 +1237,14 @@ namespace vg
 		Config() = default;
 
 		Config(
-			InitFlags          flags_,
+			const char*        applicationName_,
+			const char*        engineName_= {},
+			InitFlags          flags_= {},
 			MessageCallbackPFN messageCallback_= {},
 			Allocator          allocator_= {})
-		  : flags{ flags_ }
+		  : applicationName{ applicationName_ }
+		  , engineName{ engineName_ }
+		  , flags{ flags_ }
 		  , messageCallback{ messageCallback_ }
 		  , allocator{ allocator_ } {}
 		Config(const Config& other) = default;
@@ -3122,6 +3132,45 @@ namespace vg
 		auto operator<=>(DispatchIndirectCommand const& other) const = default;
 	};
 
+	struct VulkanObjects
+	{
+		using NativeType = VgVulkanObjects;
+
+		VkInstance_T* instance;
+		const VkAllocationCallbacks* allocationCallbacks;
+
+		VulkanObjects() = default;
+
+		VulkanObjects(
+			VkInstance_T*                instance_,
+			const VkAllocationCallbacks* allocationCallbacks_= {})
+		  : instance{ instance_ }
+		  , allocationCallbacks{ allocationCallbacks_ } {}
+		VulkanObjects(const VulkanObjects& other) = default;
+		VulkanObjects(const VgVulkanObjects& other)
+		  : VulkanObjects(*reinterpret_cast<VulkanObjects const*>(&other))
+		{
+		}
+
+		constexpr VulkanObjects& operator=(vg::VulkanObjects const& other) noexcept = default;
+		inline VulkanObjects& operator=(VgVulkanObjects const& other) noexcept
+		{
+			*this = *reinterpret_cast<vg::VulkanObjects const*>(&other);
+			return *this;
+		}
+
+		operator VgVulkanObjects&() noexcept
+		{
+			return *reinterpret_cast<VgVulkanObjects*>(this);
+		}
+		operator const VgVulkanObjects&() const noexcept
+		{
+			return *reinterpret_cast<VgVulkanObjects const*>(this);
+		}
+
+		auto operator<=>(VulkanObjects const& other) const = default;
+	};
+
 
 
 	constexpr InitFlags operator|(InitFlags a, InitFlags b) { return static_cast<InitFlags>(static_cast<std::underlying_type_t<InitFlags>>(a) | static_cast<std::underlying_type_t<InitFlags>>(b)); }
@@ -3226,15 +3275,19 @@ namespace vg
 	{
 		return static_cast<vg::Result>(vgEnumerateApis(outNumApis, *reinterpret_cast<VgGraphicsApi**>(&outApis)));
 	}
-	inline vg::Result vg::EnumerateAdapters(vg::GraphicsApi api, uint32_t* outNumAdapters, vg::Adapter* outAdapters)
+	inline vg::Result vg::EnumerateAdapters(vg::GraphicsApi api, vg::Surface surface, uint32_t* outNumAdapters, vg::Adapter* outAdapters)
 	{
-		return static_cast<vg::Result>(vgEnumerateAdapters(*reinterpret_cast<VgGraphicsApi*>(&api), outNumAdapters, *reinterpret_cast<VgAdapter**>(&outAdapters)));
+		return static_cast<vg::Result>(vgEnumerateAdapters(*reinterpret_cast<VgGraphicsApi*>(&api), *reinterpret_cast<VgSurface*>(&surface), outNumAdapters, *reinterpret_cast<VgAdapter**>(&outAdapters)));
+	}
+	inline vg::Result vg::GetVulkanObjects(vg::VulkanObjects* outVulkanObjects)
+	{
+		return static_cast<vg::Result>(vgGetVulkanObjects(*reinterpret_cast<VgVulkanObjects**>(&outVulkanObjects)));
 	}
 	inline vg::Result vg::CreateSurfaceD3D12(void* hwnd, vg::Surface* outSurface)
 	{
 		return static_cast<vg::Result>(vgCreateSurfaceD3D12(hwnd, *reinterpret_cast<VgSurface**>(&outSurface)));
 	}
-	inline vg::Result vg::CreateSurfaceVulkan(void* vkSurface, vg::Surface* outSurface)
+	inline vg::Result vg::CreateSurfaceVulkan(VkSurfaceKHR_T* vkSurface, vg::Surface* outSurface)
 	{
 		return static_cast<vg::Result>(vgCreateSurfaceVulkan(vkSurface, *reinterpret_cast<VgSurface**>(&outSurface)));
 	}
@@ -3665,5 +3718,6 @@ namespace vg
 	static_assert(sizeof(DrawIndirectCommand) == sizeof(VgDrawIndirectCommand));
 	static_assert(sizeof(DrawIndexedIndirectCommand) == sizeof(VgDrawIndexedIndirectCommand));
 	static_assert(sizeof(DispatchIndirectCommand) == sizeof(VgDispatchIndirectCommand));
+	static_assert(sizeof(VulkanObjects) == sizeof(VgVulkanObjects));
 
 }

@@ -1,5 +1,7 @@
 #include "d3d12descriptor_manager.h"
 
+#if VG_D3D12_SUPPORTED
+
 D3D12DescriptorHeap::D3D12DescriptorHeap(D3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type,
 	uint32_t descriptorCount, std::wstring_view name) : _device(&device), _descriptorCount(descriptorCount)
 {
@@ -99,3 +101,5 @@ void D3D12DescriptorManager::FreeTextureViews(D3D12Texture* texture)
 		_textureViews.erase(texture);
 	}
 }
+
+#endif

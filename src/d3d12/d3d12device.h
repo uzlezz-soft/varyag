@@ -2,6 +2,9 @@
 
 #include "../interface.h"
 #include "../common.h"
+
+#if VG_D3D12_SUPPORTED
+
 #define NOMINMAX
 #include <agilitysdk/d3d12.h>
 #include <agilitysdk/d3d12sdklayers.h>
@@ -294,7 +297,7 @@ public:
 	{
 		switch (queue)
 		{
-		case VG_QUEUE_COMPUTE: return _computVgQueue;
+		case VG_QUEUE_COMPUTE: return _computeQueue;
 		case VG_QUEUE_TRANSFER: return _transferQueue;
 		default: return _graphicsQueue;
 		}
@@ -353,10 +356,10 @@ private:
 	ComPtr<D3D12MA::Allocator> _allocator;
 
 	ComPtr<ID3D12CommandQueue> _graphicsQueue;
-	ComPtr<ID3D12CommandQueue> _computVgQueue;
+	ComPtr<ID3D12CommandQueue> _computeQueue;
 	ComPtr<ID3D12CommandQueue> _transferQueue;
 
-	std::unique_ptr<D3D12DescriptorManager> _descriptorManager;
+	D3D12DescriptorManager* _descriptorManager;
 	ComPtr<ID3D12RootSignature> _computeRootSignature;
 	ComPtr<ID3D12RootSignature> _graphicsRootSignature;
 
@@ -379,3 +382,5 @@ private:
 
 	void InitDescriptorManagement();
 };
+
+#endif

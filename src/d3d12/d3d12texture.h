@@ -2,6 +2,8 @@
 
 #include "d3d12device.h"
 
+#if VG_D3D12_SUPPORTED
+
 class D3D12Texture final : public VgTexture_t
 {
 public:
@@ -31,3 +33,5 @@ private:
 	friend class D3D12SwapChain;
 	D3D12Texture(D3D12SwapChain& swapChain, ComPtr<ID3D12Resource> resource);
 };
+
+#endif

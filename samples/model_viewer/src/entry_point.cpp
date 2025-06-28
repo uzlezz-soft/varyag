@@ -12,7 +12,8 @@ int main(int argc, char** argv)
 	glfwInit();
 
 	vg::Config cfg = {
-		/*vg::InitFlags::Debug | */vg::InitFlags::EnableMessageCallback | vg::InitFlags::UseProvidedAllocator,
+		"Model Viewer", "Varyag",
+		vg::InitFlags::Debug | vg::InitFlags::EnableMessageCallback | vg::InitFlags::UseProvidedAllocator,
 		[](VgMessageSeverity severity, const char* msg)
 		{
 			std::cout << "VARYAG: (" << severity << ") " << msg << "\n";

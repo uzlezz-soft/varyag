@@ -1,6 +1,6 @@
 #include "common.h"
 #include "interface.h"
-#ifdef _WIN32
+#if VG_D3D12_SUPPORTED
 #include "d3d12/d3d12adapter.h"
 #include "d3d12/d3d12device.h"
 
@@ -13,7 +13,9 @@
 #include "d3d12/d3d12texture.h"
 #endif
 #endif
+
 #include "varyag.h"
+#include "vk/vkcore.h"
 
 #define FUNC_DATA(func_name) \
 constexpr std::string_view _func_name_ = #func_name;
@@ -200,6 +202,10 @@ struct Global
 {
 	vg::UnorderedMap<VgGraphicsApi, vg::Vector<VgAdapter>> adapters;
 	vg::Set<VgGraphicsApi> unaskedGraphicsApis;
+
+#if VG_VULKAN_SUPPORTED
+	VulkanCore* vulkanCore;
+#endif
 };
 static Global* s_global;
 
@@ -273,6 +279,10 @@ VG_API VgResult vgInit(const VgConfig* cfg)
 
 	s_global = new (GetAllocator().Allocate<Global>()) Global();
 
+#if VG_VULKAN_SUPPORTED
+	s_global->vulkanCore = VulkanCore::LoadVulkan(*cfg);
+#endif
+
 	uint32_t numAvailableApis;
 	vgEnumerateApis(&numAvailableApis, nullptr);
 	vg::Vector<VgGraphicsApi> availableApis(numAvailableApis);
@@ -295,6 +305,9 @@ VG_API void vgShutdown()
 		}
 	}
 
+#if VG_VULKAN_SUPPORTED
+	GetAllocator().Delete(s_global->vulkanCore);
+#endif
 	GetAllocator().Delete(s_global);
 	s_global = nullptr;
 	messageCallback = nullptr;
@@ -306,7 +319,7 @@ static constexpr VgGraphicsApi SelectAutoGraphicsApi(VgGraphicsApi api)
 {
 	if (api != VG_GRAPHICS_API_AUTO) return api;
 
-#if _WIN32
+#if VG_D3D12_SUPPORTED && _WIN32
 	return VG_GRAPHICS_API_D3D12;
 #else
 	return VG_GRAPHICS_API_VULKAN;
@@ -319,10 +332,12 @@ VG_API VgResult vgEnumerateApis(uint32_t* out_num_apis, VgGraphicsApi* out_apis)
 	CHECK_NOT_NULL_RETURN(out_num_apis);
 
 	static std::array apis = {
-#if _WIN32
+#if VG_D3D12_SUPPORTED
 		VG_GRAPHICS_API_D3D12,
 #endif
+#if VG_VULKAN_SUPPORTED
 		VG_GRAPHICS_API_VULKAN,
+#endif
 	};
 
 	*out_num_apis = static_cast<uint32_t>(apis.size());
@@ -333,9 +348,10 @@ VG_API VgResult vgEnumerateApis(uint32_t* out_num_apis, VgGraphicsApi* out_apis)
 	return VG_SUCCESS;
 }
 
-VG_API VgResult vgEnumerateAdapters(VgGraphicsApi api, uint32_t* out_num_adapters, VgAdapter* out_adapters)
+VG_API VgResult vgEnumerateAdapters(VgGraphicsApi api, VgSurface surface, uint32_t* out_num_adapters, VgAdapter* out_adapters)
 {
 	FUNC_DATA(vgEnumerateAdapters);
+	CHECK_NOT_NULL_RETURN(surface);
 	CHECK_NOT_NULL_RETURN(out_num_adapters);
 #if VG_VALIDATION
 	VALIDATE_ENUM_RETURN(api, "api");
@@ -346,7 +362,7 @@ VG_API VgResult vgEnumerateAdapters(VgGraphicsApi api, uint32_t* out_num_adapter
 	{
 		switch (api)
 		{
-#if _WIN32
+#if VG_D3D12_SUPPORTED
 		case VG_GRAPHICS_API_D3D12:
 		{
 			s_global->adapters[VG_GRAPHICS_API_D3D12] = D3D12Adapter::CollectAdapters();
@@ -355,12 +371,23 @@ VG_API VgResult vgEnumerateAdapters(VgGraphicsApi api, uint32_t* out_num_adapter
 			break;
 		}
 #endif
+
+#if VG_VULKAN_SUPPORTED
+		case VG_GRAPHICS_API_VULKAN:
+		{
+			if (!s_global->vulkanCore) break;
+			s_global->adapters[VG_GRAPHICS_API_VULKAN] = s_global->vulkanCore->CollectAdapters(surface);
+			std::sort(s_global->adapters[api].begin(), s_global->adapters[api].end(),
+				[](const auto& a, const auto& b) { return a->Score() > b->Score(); });
+			break;
+		};
+#endif
 		}
 
 		s_global->unaskedGraphicsApis.erase(api);
 	}
 
-	if (!s_global->adapters.contains(api))
+	if (!s_global->adapters.contains(api) || s_global->adapters[api].empty())
 	{
 		return VG_API_UNSUPPORTED;
 	}
@@ -2369,24 +2396,47 @@ void vgTextureDestroyViews(VgTexture texture)
 	texture->DestroyViews();
 }
 
+VgResult vgGetVulkanObjects(VgVulkanObjects* out_vulkan_objects)
+{
+	FUNC_DATA(vgGetVulkanObjects);
+	CHECK_NOT_NULL_RETURN(out_vulkan_objects);
+
+#if VG_VULKAN_SUPPORTED
+	if (!s_global->vulkanCore) return VG_FAILURE;
+	s_global->vulkanCore->Initialize();
+	*out_vulkan_objects = s_global->vulkanCore->GetVulkanObjects();
+	return VG_SUCCESS;
+#else
+	return VG_API_UNSUPPORTED;
+#endif
+}
+
 VgResult vgCreateSurfaceD3D12(void* hwnd, VgSurface* out_surface)
 {
 	FUNC_DATA(vgCreateSurfaceD3D12);
 	CHECK_NOT_NULL_RETURN(hwnd);
 	CHECK_NOT_NULL_RETURN(out_surface);
-	
+#if VG_D3D12_SUPPORTED	
 	*out_surface = hwnd;
 	return VG_SUCCESS;
+#else
+	return VG_API_UNSUPPORTED;
+#endif
 }
 
-VgResult vgCreateSurfaceVulkan(void* vk_surface, VgSurface* out_surface)
+VgResult vgCreateSurfaceVulkan(struct VkSurfaceKHR_T* vk_surface, VgSurface* out_surface)
 {
 	FUNC_DATA(vgCreateSurfaceVulkan);
 	CHECK_NOT_NULL_RETURN(vk_surface);
 	CHECK_NOT_NULL_RETURN(out_surface);
-	
-	// TODO: create VkSurfaceKHR using VkInstance...
+
+#if VG_VULKAN_SUPPORTED
+	if (!s_global->vulkanCore) return VG_API_UNSUPPORTED;
+	*out_surface = vk_surface;
+	return VG_SUCCESS;
+#else
 	return VG_API_UNSUPPORTED;
+#endif
 }
 
 void vgDestroySurfaceVulkan(VgSurface surface)
@@ -2394,7 +2444,10 @@ void vgDestroySurfaceVulkan(VgSurface surface)
 	FUNC_DATA(vgDestroySurfaceVulkan);
 	CHECK_NOT_NULL(surface);
 
-	// TODO: destroy VkSurfaceKHR using VkInstance...
+#if VG_VULKAN_SUPPORTED
+	if (s_global->vulkanCore)
+		s_global->vulkanCore->DestroySurface(static_cast<VkSurfaceKHR>(surface));
+#endif
 }
 
 VgResult vgSwapChainGetApiObject(VgSwapChain swap_chain, void** out_obj)

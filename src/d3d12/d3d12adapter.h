@@ -3,6 +3,8 @@
 #include "d3d12device.h"
 #include <vector>
 #include <memory>
+
+#if VG_D3D12_SUPPORTED
 #include <dxcore.h>
 
 class D3D12Adapter final : public VgAdapter_t
@@ -27,3 +29,4 @@ private:
 	ComPtr<IDXGIAdapter1> _adapter;
 	VgAdapterProperties _properties;
 };
+#endif

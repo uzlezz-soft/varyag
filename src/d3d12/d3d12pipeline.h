@@ -2,6 +2,8 @@
 
 #include "d3d12device.h"
 
+#if VG_D3D12_SUPPORTED
+
 class D3D12Pipeline : public VgPipeline_t
 {
 public:
@@ -42,3 +44,5 @@ private:
 	float _depthBoundsMax;
 	D3D12_PRIMITIVE_TOPOLOGY _primitiveTopology;
 };
+
+#endif

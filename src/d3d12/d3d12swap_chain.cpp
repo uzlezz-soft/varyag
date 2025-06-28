@@ -1,6 +1,8 @@
 #include "d3d12swap_chain.h"
 #include "d3d12adapter.h"
 
+#if VG_D3D12_SUPPORTED
+
 D3D12SwapChain::~D3D12SwapChain()
 {
 	for (auto backBuffer : _backBuffers)
@@ -62,3 +64,5 @@ D3D12SwapChain::D3D12SwapChain(D3D12Device& device, const VgSwapChainDesc& desc)
 		_backBuffers[i] = new(GetAllocator().Allocate<D3D12Texture>()) D3D12Texture(*this, resource);
 	}
 }
+
+#endif

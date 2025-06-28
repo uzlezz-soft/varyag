@@ -1,6 +1,7 @@
 #pragma once
 
 #include "varyag.h"
+#include <optional>
 
 struct VgAdapter_t
 {

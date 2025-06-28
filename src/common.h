@@ -1,5 +1,12 @@
 #pragma once
 
+#ifdef _WIN32
+#define VG_D3D12_SUPPORTED 1
+#else
+#define VG_D3D12_SUPPORTED 0
+#endif
+#define VG_VULKAN_SUPPORTED 1
+
 #include "varyag.h"
 #include <set>
 #include <array>

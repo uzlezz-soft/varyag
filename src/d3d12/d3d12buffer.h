@@ -4,6 +4,8 @@
 #include <vector>
 #include <mutex>
 
+#if VG_D3D12_SUPPORTED
+
 class D3D12Buffer final : public VgBuffer_t
 {
 public:
@@ -34,3 +36,5 @@ private:
 
 	D3D12Buffer(D3D12Device& device, const VgBufferDesc& desc);
 };
+
+#endif

@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#if VG_D3D12_SUPPORTED
+
 class D3D12SwapChain final : public VgSwapChain_t
 {
 public:
@@ -30,3 +32,5 @@ private:
 
 	D3D12SwapChain(D3D12Device& device, const VgSwapChainDesc& desc);
 };
+
+#endif
